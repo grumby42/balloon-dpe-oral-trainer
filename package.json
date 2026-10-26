@@ -1,0 +1,15 @@
+{
+  "name": "balloon-dpe-oral-trainer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Offline DPE oral simulator for the FAA Commercial Pilot – Lighter-Than-Air Balloon (airborne heater) practical test.",
+  "license": "MIT",
+  "scripts": {
+    "build": "node tools/build.js",
+    "length-check": "node tools/length-check.js",
+    "smoke": "node tools/smoke.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.40.0"
+  }
+}

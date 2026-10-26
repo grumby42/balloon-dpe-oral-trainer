@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Balloon DPE Simulator</title>
+<meta name="build-id" content="%%BUILD%%">
+<meta name="build-utc" content="%%STAMP%%">
+<style>
+:root{--bg:#f6f3ee;--card:#fff;--ink:#1d1a16;--mute:#6b6459;--line:#e2dccf;--acc:#c2410c;--acc2:#0f766e;--ok:#15803d;--warn:#b45309;--bad:#b91c1c;--chip:#efe9dd}
+@media (prefers-color-scheme:dark){:root{--bg:#15130f;--card:#1f1c17;--ink:#f2ede4;--mute:#a59d8f;--line:#363027;--acc:#fb923c;--acc2:#2dd4bf;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--chip:#2a261f}}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{padding:14px 16px 8px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5}
+h1{font-size:18px;margin:0}.sub{color:var(--mute);font-size:12px}
+nav{display:flex;gap:6px;margin-top:8px;overflow-x:auto}
+nav button{flex:none}
+main{max-width:860px;margin:0 auto;padding:16px}
+button{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:8px 12px;cursor:pointer}
+button.pri{background:var(--acc);border-color:var(--acc);color:#fff}button.on{outline:2px solid var(--acc)}
+button:disabled{opacity:.5;cursor:default}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:0 0 12px}
+.lvl{display:grid;gap:10px}.lvl label{display:block;border:1px solid var(--line);border-radius:12px;padding:12px;cursor:pointer;background:var(--card)}
+.lvl input{margin-right:8px}.lvl label:has(input:checked){border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{display:inline-block;background:var(--chip);border-radius:999px;padding:2px 9px;font-size:12px;margin:2px 4px 2px 0}
+.dpe{border-left:4px solid var(--acc);padding:8px 12px;background:var(--chip);border-radius:8px;margin:8px 0;font-style:italic}
+.asi{border-left:4px solid var(--acc2);padding:8px 12px;background:var(--chip);border-radius:8px;margin:8px 0;font-size:14px}
+.opt{display:block;width:100%;text-align:left;margin:8px 0;padding:12px}
+.opt .why{font-size:14px;color:var(--mute);margin-top:6px}
+.tag{font-size:11px;font-weight:700;letter-spacing:.04em;padding:1px 7px;border-radius:6px;color:#fff;margin-right:6px}
+.tB{background:var(--ok)}.tS{background:var(--warn)}.tW{background:var(--bad)}
+.r-SAT,.r-SAT-P{color:var(--ok)}.r-WEAK{color:var(--warn)}.r-UNSAT,.r-DISQ{color:var(--bad)}
+.q{font-size:18px;font-weight:600}
+.bar{height:6px;background:var(--line);border-radius:6px;overflow:hidden}.bar i{display:block;height:100%;background:var(--acc)}
+table{width:100%;border-collapse:collapse;font-size:14px}td,th{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left;vertical-align:top}
+textarea,input[type=text],select{font:inherit;width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+.cert{border:3px double var(--ok);border-radius:12px;padding:16px}.nod{border:3px double var(--bad);border-radius:12px;padding:16px}
+details summary{cursor:pointer;font-weight:600}
+.timer{font-variant-numeric:tabular-nums;font-weight:700}
+.small{font-size:13px;color:var(--mute)}
+footer{color:var(--mute);font-size:12px;text-align:center;padding:20px}
+</style>
+</head>
+<body>
+<header>
+ <h1>🎈 Commercial LBH — DPE Oral Simulator</h1>
+ <div class="sub">FAA-S-8081-18A (Nov 2023) · Section 1 Balloon · Airborne heater · Build <b id="bid"></b> · shipped <span id="bts"></span></div>
+ <nav id="nav"><button data-v="setup">Checkride</button><button data-v="bank">Question bank</button><button data-v="cov">PTS coverage</button><button data-v="hist">History</button><button data-v="about">About</button></nav>
+</header>
+<main id="app"></main>
+<footer>Training aid only — verify against the current PTS, 14 CFR, FAA-H-8083-11 and your balloon flight manual. Build <span id="bid2"></span></footer>
+<script>
+const BUILD="%%BUILD%%", STAMP="%%STAMP%%";
+%%BANK%%
+// ---------- helpers ----------
+const $=s=>document.querySelector(s), app=$("#app");
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const shuf=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+const pick=a=>a[Math.random()*a.length|0];
+const areaOf=a=>PTS.find(p=>p.a===a), taskName=(a,t)=>{const x=areaOf(a).tasks.find(k=>k[0]===t);return x?x[1]:t};
+const TL={B:"BOOK",S:"SEMI",W:"WRONG"};
+const dtext=(q,i)=>{const a=q.ans[i];return a[0]==="B"?(KEYS[q.id]||a[1]):(DISP[q.id+"|"+i]||a[1])};
+const full=(q,i)=>q.ans[i][0]==="B"&&KEYS[q.id]?`<div class="why"><b>Full model answer:</b> ${esc(q.ans[i][1])}</div>`:"";
+const store={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+$("#bid").textContent=BUILD;$("#bid2").textContent=BUILD;$("#bts").textContent=STAMP;
+
+// ---------- DPE levels ----------
+const LEVELS={
+ 1:{name:"DPE is basically giving it away",short:"Giveaway",
+   intro:["Morning! Coffee's over there. This'll be painless — I've seen your logbook, you'll be fine.","Let's just chat about ballooning for a bit, then we'll go fly."],
+   desc:"~1 question per Area. Semi answers pass. Wrong answers get a hint and another try. Only a repeated safety-critical miss fails.",
+   ok:["Yep, that's it.","Good enough for me.","Sure, sure — you've got it.","Close enough, moving on."],
+   hint:"Hmm… you sure about that? Think about it a second — want to try again?"},
+ 2:{name:"The DPE is understanding and works with you",short:"Understanding",
+   intro:["Thanks for coming in. I'm going to cover every Area of Operation in the PTS — this is a conversation, not an interrogation.","If you don't know something, tell me how you'd find it. If an answer is incomplete, I'll ask a follow-up."],
+   desc:"Every Area; FOI Task F + one more. Semi answers get a probing follow-up. One retry on a wrong answer (the PTS lets an evaluator repeat an incomplete or uncertain Task). Second miss = unsatisfactory.",
+   ok:["Good.","That's what I'm looking for.","Nice — that's correlative, I like that.","Okay, good."],
+   probe:"Okay, you're in the neighborhood. Can you be more specific?",retry:"Let's back up — I'm not sure that's right. Take another run at it."},
+ 3:{name:"Strictest DPE Ever + FAA observer present",short:"Strict + ASI",
+   intro:["This is Inspector Hale from the FSDO. She's observing me today, not you — but understand I'll be conducting this exactly by the book.","Every Task in every Area. I expect references. I will not lead you. You may stop the test at any time."],
+   desc:"Every LBH Task plus scenario/correlation questions. 90-second clock. Semi answers get exactly one probe — must reach the book answer. Wrong answer = unsatisfactory; wrong on a safety-critical item = immediate disapproval.",
+   ok:["Noted.","Satisfactory.","Continue.","Next item."],
+   probe:"That's vague. What does the reference actually say?"}
+};
+const ASI=["(ASI writes on her clipboard.)","ASI to examiner: “Make sure you're testing correlation, not rote — ask for the why.”","(ASI checks her copy of the plan of action against the PTS Area list.)","ASI: “Examiner, you didn't ask for a reference on that one.”","(ASI notes the time.)","ASI to examiner: “Did you evaluate that Task in its entirety?”"];
+
+// ---------- plan of action ----------
+function buildPlan(L){
+ const plan=[];
+ const by=(a,t)=>BANK.filter(q=>q.a===a&&q.t===t&&!q.s);
+ const prefer=(arr,f)=>{const g=arr.filter(f);return pick(g.length?g:arr)};
+ for(const P of PTS){
+  let tasks=P.tasks.map(t=>t[0]);
+  if(P.a==="I"){const others=shuf(tasks.filter(t=>t!=="F"));tasks=["F",...others.slice(0,L===3?2:1)];if(L===1)tasks=["F"];}
+  else if(L===1)tasks=[pick(tasks)];
+  else if(L===2&&tasks.length>3)tasks=shuf(tasks).slice(0,Math.ceil(tasks.length/2));
+  for(const t of tasks){const pool=by(P.a,t);if(!pool.length)continue;
+   plan.push(L===1?prefer(pool,q=>q.d===1):L===3?prefer(pool,q=>q.d>=2):pick(pool));}
+  const sc=BANK.filter(q=>q.s&&q.a===P.a);
+  if(L===3)plan.push(...sc);
+ }
+ if(L===2){const sc=BANK.filter(q=>q.s);const x=pick(sc);const i=PTS.findIndex(p=>p.a===x.a);let pos=plan.findLastIndex(q=>PTS.findIndex(p=>p.a===q.a)<=i);plan.splice(pos+1,0,x);}
+ return plan.map(q=>q.id);
+}
+
+// ---------- session ----------
+let S=null, tick=null;
+function start(){
+ const L=+document.querySelector("input[name=lvl]:checked").value, mode=document.querySelector("input[name=mode]:checked").value;
+ S={L,mode,name:$("#cname").value.trim()||"Applicant",plan:buildPlan(L),i:0,stage:"ask",tried:[],res:{},failed:{},ended:null,startUTC:new Date().toISOString(),asi:L===3};
+ renderIntro();
+}
+const Q=()=>BANK.find(q=>q.id===S.plan[S.i]);
+function renderIntro(){
+ const lv=LEVELS[S.L];
+ app.innerHTML=`<div class="card"><div class="chip">${esc(lv.short)}</div><div class="chip">${S.mode==="exam"?"Examiner console":"Candidate self-test"}</div><div class="chip">${S.plan.length} items on the plan of action</div>
+ ${lv.intro.map(t=>`<div class="${t.startsWith("This is Inspector")?"asi":"dpe"}">“${esc(t)}”</div>`).join("")}
+ ${S.mode==="exam"?`<p class="small">Read each question aloud. Listen. Then tap the answer card that best matches what ${esc(S.name)} said (or use the level buttons). Probe and retry prompts appear automatically for the selected DPE level.</p>`:""}
+ <button class="pri" onclick="ask()">Begin oral</button></div>`;
+}
+function progress(){return `<div class="row small"><span>Item ${S.i+1} / ${S.plan.length}</span><span style="flex:1"></span>${S.L===3&&S.mode==="cand"?`<span class="timer" id="tm"></span>`:""}</div><div class="bar"><i style="width:${(S.i/S.plan.length*100).toFixed(1)}%"></i></div>`}
+function ask(){
+ clearInterval(tick);
+ if(S.i>=S.plan.length)return finish();
+ const q=Q(), lv=LEVELS[S.L];
+ const avail=q.ans.map((a,k)=>({a,k})).filter(o=>!S.tried.includes(o.k));
+ const opts=S.mode==="exam"?avail:shuf(avail);
+ let lead="";
+ if(S.stage==="probe")lead=`<div class="dpe">“${esc(q.fu||lv.probe)}”</div>`;
+ if(S.stage==="retry")lead=`<div class="dpe">“${esc(S.L===1?lv.hint:lv.retry)}”</div>`;
+ const asi=S.asi&&S.stage==="ask"&&Math.random()<.3?`<div class="asi">${esc(pick(ASI))}</div>`:"";
+ app.innerHTML=`<div class="card">${progress()}
+ <div class="row" style="margin-top:8px"><span class="chip">Area ${q.a} · ${esc(areaOf(q.a).n)}</span><span class="chip">${areaOf(q.a).tasks.length>1?"Task "+q.t+" · ":"Task: "}${esc(taskName(q.a,q.t))}</span>${q.c?'<span class="chip">⚠ safety-critical</span>':""}${q.s?'<span class="chip">scenario</span>':""}</div>
+ ${asi}<p class="q">${esc(q.q)}</p>${lead}
+ ${opts.map(o=>`<button class="opt" onclick="grade(${o.k})">${S.mode==="exam"?`<span class="tag t${o.a[0]}">${TL[o.a[0]]}</span>${esc(o.a[1])}<div class="why">${esc(o.a[2])}</div>`:esc(dtext(q,o.k))}</button>`).join("")}
+ ${S.mode==="exam"?`<div class="row" style="margin-top:8px"><span class="small">Candidate said something else, at the level of:</span><button onclick="gradeT('B')">Book</button><button onclick="gradeT('S')">Semi</button><button onclick="gradeT('W')">Wrong</button></div><textarea id="note" rows="2" placeholder="Examiner note (saved to debrief)"></textarea>`:""}
+ <p class="small">Ref: ${esc(q.ref)}</p></div>`;
+ if(S.L===3&&S.mode==="cand"){let t=90;const el=$("#tm");el.textContent=t+"s";tick=setInterval(()=>{t--;el.textContent=t+"s";if(t<=0){clearInterval(tick);timeout()}},1000)}
+}
+function gradeT(t){const q=Q();const k=q.ans.findIndex((a,i)=>a[0]===t&&!S.tried.includes(i));grade(k>=0?k:q.ans.findIndex(a=>a[0]===t),true)}
+function timeout(){const q=Q();rec(q,"UNSAT",["TIMEOUT"]);S.tried=[];afterRes(q,"UNSAT","Time. I'm going to mark that one unsatisfactory.")}
+function rec(q,r,path,note){const prev=S.res[q.id];S.res[q.id]={r,path:(prev?prev.path:[]).concat(path),note:[prev&&prev.note,note].filter(Boolean).join(" | ")}}
+function grade(k,typed){
+ clearInterval(tick);
+ const q=Q(),a=q.ans[k],t=a[0],L=S.L,first=S.stage==="ask",lv=LEVELS[L];
+ const note=($("#note")&&$("#note").value.trim())||"";
+ S.tried.push(k);S.res[q.id]=S.res[q.id]||{r:null,path:[],note:""};
+ const path=[t+(typed?"*":"")];
+ let r=null,next=null,say=pick(lv.ok);
+ if(first){
+  if(t==="B")r="SAT";
+  else if(t==="S"){if(L===1)r="SAT";else next="probe";}
+  else { if(L===3){r=q.c?"DISQ":"UNSAT";} else next="retry"; }
+ } else {
+  if(t==="B")r="SAT-P";
+  else if(L===1)r=(t==="W"&&q.c)?"UNSAT":"SAT-P";
+  else if(L===2)r=t==="S"?"WEAK":"UNSAT";
+  else r="UNSAT";
+ }
+ S.res[q.id].path.push(...path);if(note)S.res[q.id].note=[S.res[q.id].note,note].filter(Boolean).join(" | ");
+ if(next){S.stage=next;return ask();}
+ S.res[q.id].r=r;S.tried=[];
+ if(r==="UNSAT")say=L===1?"Well… we'll need to talk about that one.":"I'm afraid that one doesn't meet the standard.";
+ if(r==="DISQ")say="Stop there. That answer, in the airplane, gets someone hurt. I can't continue this practical test.";
+ if(r==="WEAK")say="Okay — I'll accept that, but we're going to debrief it.";
+ afterRes(q,r,say);
+}
+function afterRes(q,r,say){
+ S.stage="ask";
+ const bad=r==="UNSAT"||r==="DISQ";
+ if(bad){S.failed[q.a]=S.failed[q.a]||[];S.failed[q.a].push(q.t)}
+ const reveal=q.ans.map((a,i)=>`<div class="opt" style="cursor:default"><span class="tag t${a[0]}">${TL[a[0]]}</span>${esc(S.mode==="exam"?a[1]:dtext(q,i))}<div class="why">${esc(a[2])}</div>${S.mode==="exam"?"":full(q,i)}</div>`).join("");
+ let ctrl=`<button class="pri" onclick="nextQ()">Next</button>`;
+ if(r==="DISQ")ctrl=`<button class="pri" onclick="S.ended='disq';finish()">Receive Notice of Disapproval</button>`;
+ else if(r==="UNSAT"&&S.L>1)ctrl=`<p class="dpe">“Area ${q.a} is unsatisfactory, which means the practical test is failed. You can stop now, or continue so I can give you credit for the Areas you complete — your choice.”</p><div class="row"><button class="pri" onclick="nextQ()">Continue for credit</button><button onclick="S.ended='stopped';finish()">Stop the test</button></div>`;
+ app.innerHTML=`<div class="card">${progress()}<p class="q">${esc(q.q)}</p>
+ <p>Result: <b class="r-${r}">${r}</b></p><div class="dpe">“${esc(say)}”</div>
+ ${S.asi&&bad?`<div class="asi">(ASI nods and writes: “Unsat Task ${q.a}.${q.t} — properly identified.”)</div>`:""}
+ <details ${S.mode==="cand"?"open":""}><summary>Every answer, and why</summary>${reveal}</details>
+ <p class="small">Ref: ${esc(q.ref)}</p>${ctrl}</div>`;
+}
+function nextQ(){S.i++;S.tried=[];ask()}
+
+// ---------- finish ----------
+function finish(){
+ clearInterval(tick);
+ S.done=true;S.endUTC=new Date().toISOString();
+ const failedAreas=Object.keys(S.failed), pass=!failedAreas.length&&!S.ended;
+ const askedAreas=new Set(S.plan.slice(0,S.i+ (S.ended?1:0)).map(id=>BANK.find(q=>q.id===id).a));
+ const notTested=PTS.filter(p=>!askedAreas.has(p.a)).map(p=>p.a);
+ const counts={};Object.values(S.res).forEach(x=>{if(x.r)counts[x.r]=(counts[x.r]||0)+1});
+ const hist=store.get("baln-dpe-hist",[]);hist.unshift({build:BUILD,utc:S.endUTC,name:S.name,level:S.L,mode:S.mode,pass,failed:S.failed,counts});store.set("baln-dpe-hist",hist.slice(0,50));
+ store.set("baln-dpe-last",S.res);
+ const doc=pass?`<div class="cert"><b>TEMPORARY AIRMAN CERTIFICATE (simulated)</b><br>${esc(S.name)} — COMMERCIAL PILOT<br>LIGHTER-THAN-AIR BALLOON<br><b>LIMITED TO BALLOONS WITH AIRBORNE HEATER</b> (14 CFR 61.133(b)(2))<br><span class="small">Instructional privileges: 61.133(a)(2)(ii) — balloon only.</span></div>`
+ :`<div class="nod"><b>NOTICE OF DISAPPROVAL OF APPLICATION — FAA Form 8060-5 (simulated)</b><br>Applicant: ${esc(S.name)}<br>${S.ended==="disq"?"Practical test discontinued by evaluator — safety of flight.<br>":""}
+ Areas of Operation failed: ${failedAreas.map(a=>`<b>${a}</b> (Task ${[...new Set(S.failed[a])].join(", ")})`).join("; ")||"—"}<br>
+ ${notTested.length?`Areas not tested: ${notTested.join(", ")}<br>`:""}<span class="small">Retest: the evaluator re-tests failed Areas; additional training and a new instructor endorsement are required (61.49).</span></div>`;
+ const rows=S.plan.map(id=>{const q=BANK.find(x=>x.id===id),x=S.res[id];if(!x||!x.r)return"";const b=q.ans.find(a=>a[0]==="B");
+  return `<tr><td>${q.a}.${q.t}</td><td><b class="r-${x.r}">${x.r}</b><div class="small">${x.path.join("→")}</div></td><td>${esc(q.q)}<details><summary class="small">Book answer</summary><div class="small">${esc(b[1])}</div></details>${x.note?`<div class="small">📝 ${esc(x.note)}</div>`:""}</td></tr>`}).join("");
+ app.innerHTML=`<div class="card"><div class="dpe">“${pass?"Congratulations. Let's get your temporary certificate printed.":"Let's sit down and go over this together."}”</div>${doc}
+ <p class="small">${Object.entries(counts).map(([k,v])=>`${k}: ${v}`).join(" · ")} — DPE: ${esc(LEVELS[S.L].short)}</p>
+ <div class="row"><button class="pri" onclick="exportTxt()">Export debrief (.txt)</button><button onclick="view('setup')">New checkride</button></div></div>
+ <div class="card"><b>Debrief</b><table><tr><th>Task</th><th>Result</th><th>Question</th></tr>${rows}</table>
+ <p class="small">SAT-P = satisfactory after a probe or retry · WEAK = accepted, must debrief · UNSAT/DISQ fail the Area (and the test). Path: B/S/W = book/semi/wrong answer chosen; * = examiner-typed level.</p></div>`;
+}
+function exportTxt(){
+ const L=[`BALLOON COMMERCIAL (LBH) DPE ORAL — DEBRIEF`,`Build ${BUILD} · shipped ${STAMP}`,`Exported ${new Date().toISOString()}`,`Applicant: ${S.name} · DPE: ${LEVELS[S.L].name} · Mode: ${S.mode}`,`Started ${S.startUTC} · Ended ${S.endUTC}`,`Outcome: ${Object.keys(S.failed).length||S.ended?"DISAPPROVED — failed Areas "+Object.keys(S.failed).join(", "):"PASS — limited to balloons with airborne heater"}`,""];
+ S.plan.forEach(id=>{const q=BANK.find(x=>x.id===id),x=S.res[id];if(!x||!x.r)return;L.push(`[${x.r}] ${q.a}.${q.t} ${q.id} (${x.path.join(">")})`,`Q: ${q.q}`,`BOOK: ${q.ans.find(a=>a[0]==="B")[1]}`,`REF: ${q.ref}`);if(x.note)L.push(`NOTE: ${x.note}`);L.push("")});
+ const blob=new Blob([L.join("\n")],{type:"text/plain"}),u=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=u;a.download=`baln-dpe-debrief-${new Date().toISOString().replace(/[:.]/g,"").slice(0,15)}Z.txt`;a.click();setTimeout(()=>URL.revokeObjectURL(u),2000);
+}
+
+// ---------- other views ----------
+function viewSetup(){
+ app.innerHTML=`<div class="card"><b>Choose your examiner</b><div class="lvl" style="margin-top:8px">
+ ${[1,2,3].map(n=>`<label><input type="radio" name="lvl" value="${n}" ${n===2?"checked":""}><b>Level ${n} — “${esc(LEVELS[n].name)}”</b><div class="small">${esc(LEVELS[n].desc)}</div></label>`).join("")}</div></div>
+ <div class="card"><b>Who's driving?</b><div class="lvl" style="margin-top:8px">
+ <label><input type="radio" name="mode" value="cand" checked><b>Candidate self-test</b><div class="small">Answers shuffled and unlabeled; pick the one closest to what you'd say. Full explanations after each item.</div></label>
+ <label><input type="radio" name="mode" value="exam"><b>Examiner console (mock oral)</b><div class="small">For the instructor running the mock: read the question aloud, see BOOK / SEMI / WRONG answers with explanations, tap what the candidate actually said, add notes. Probe/retry prompts follow the DPE level.</div></label></div>
+ <p><input type="text" id="cname" placeholder="Applicant name (for the debrief)"></p>
+ <button class="pri" onclick="start()">Build plan of action & start</button></div>`;
+}
+function viewBank(){
+ app.innerHTML=`<div class="card"><div class="row"><select id="fa" style="max-width:220px"><option value="">All Areas</option>${PTS.map(p=>`<option value="${p.a}">${p.a} — ${esc(p.n)}</option>`).join("")}</select><input type="text" id="fs" placeholder="Search" style="max-width:260px"><label class="small"><input type="checkbox" id="fc"> safety-critical only</label></div><p class="small" id="fn"></p></div><div id="bl"></div>`;
+ const draw=()=>{const a=$("#fa").value,s=$("#fs").value.toLowerCase(),c=$("#fc").checked;
+  const L=BANK.filter(q=>(!a||q.a===a)&&(!c||q.c)&&(!s||JSON.stringify(q).toLowerCase().includes(s)));
+  $("#fn").textContent=`${L.length} of ${BANK.length} questions`;
+  $("#bl").innerHTML=L.map(q=>`<div class="card"><div class="row"><span class="chip">${q.id}</span><span class="chip">${q.a}.${q.t} ${esc(taskName(q.a,q.t))}</span>${q.c?'<span class="chip">⚠ critical</span>':""}${q.s?'<span class="chip">scenario</span>':""}</div><p class="q">${esc(q.q)}</p>${q.fu?`<p class="small">Probe: “${esc(q.fu)}”</p>`:""}<details><summary>Answers (${q.ans.length})</summary>${q.ans.map((x,i)=>`<div class="opt" style="cursor:default"><span class="tag t${x[0]}">${TL[x[0]]}</span>${esc(dtext(q,i))}<div class="why">${esc(x[2])}</div>${full(q,i)}</div>`).join("")}</details><p class="small">Ref: ${esc(q.ref)}</p></div>`).join("")};
+ ["#fa","#fs","#fc"].forEach(s=>$(s).addEventListener("input",draw));draw();
+}
+function viewCov(){
+ const last=store.get("baln-dpe-last",{});
+ app.innerHTML=`<div class="card"><b>PTS FAA-S-8081-18A — Section 1 Balloon (LBH)</b><p class="small">Questions in the bank per Task, and your most recent result. VIII-F High Altitude Flight is LBG-only and not tested for an airborne-heater applicant.</p>
+ ${PTS.map(p=>`<h3 style="margin:14px 0 4px;font-size:16px">${p.a}. ${esc(p.n)}</h3>${p.note?`<div class="small">${esc(p.note)}</div>`:""}<table>${p.tasks.map(t=>{const qs=BANK.filter(q=>q.a===p.a&&q.t===t[0]);const rs=qs.map(q=>last[q.id]&&last[q.id].r).filter(Boolean);return `<tr><td style="width:36px">${p.tasks.length>1?t[0]:"—"}</td><td>${esc(t[1])}</td><td style="width:60px">${qs.length} q</td><td style="width:120px">${rs.map(r=>`<span class="r-${r}">${r}</span>`).join(" ")||'<span class="small">—</span>'}</td></tr>`}).join("")}</table>`).join("")}</div>`;
+}
+function viewHist(){
+ const h=store.get("baln-dpe-hist",[]);
+ app.innerHTML=`<div class="card"><b>Session history</b> <span class="small">(this browser only)</span>${h.length?`<table><tr><th>UTC</th><th>Applicant</th><th>DPE</th><th>Outcome</th></tr>${h.map(x=>`<tr><td class="small">${esc(x.utc.slice(0,16).replace("T"," "))}Z</td><td>${esc(x.name)}</td><td>L${x.level} ${x.mode==="exam"?"(console)":""}</td><td class="${x.pass?"r-SAT":"r-UNSAT"}">${x.pass?"PASS":"Disapproved "+Object.keys(x.failed).join(",")}</td></tr>`).join("")}</table><button onclick="if(confirm('Clear history?')){store.set('baln-dpe-hist',[]);store.set('baln-dpe-last',{});viewHist()}">Clear</button>`:'<p class="small">No sessions yet.</p>'}</div>`;
+}
+function viewAbout(){
+ app.innerHTML=`<div class="card"><b>How it grades</b><table>
+ <tr><th></th><th>Book</th><th>Semi</th><th>Wrong</th></tr>
+ <tr><td>L1 Giveaway</td><td>SAT</td><td>SAT</td><td>Hint + retry; only a repeated safety-critical miss is UNSAT</td></tr>
+ <tr><td>L2 Understanding</td><td>SAT</td><td>Probe → book = SAT-P, semi = WEAK, wrong = UNSAT</td><td>One retry → book = SAT-P, semi = WEAK, wrong = UNSAT</td></tr>
+ <tr><td>L3 Strict + ASI</td><td>SAT</td><td>One probe → must reach book, else UNSAT</td><td>UNSAT; safety-critical = immediate disapproval</td></tr></table>
+ <p class="small">Anti-tell: in self-test, every option is shown in a length-matched version (build check: the book answer is never visibly longer or shorter than all the other options by 10% or more). The full model answer appears in the reveal.</p><p class="small">Any UNSAT Task fails its Area and the test (PTS: Unsatisfactory Performance). L2/L3 offer to continue for credit, then issue a simulated 8060-5 listing failed and untested Areas. L3 adds a 90-second clock in self-test mode.</p></div>
+ ${ERRLOG.length?`<div class="card"><b>Accuracy review — ${ERRLOG.length} corrections applied</b><p class="small">Pre-checkride review against eCFR, AIM, PTS 8081-18A, AIH 8083-9B and BFH 8083-11.</p><table>${ERRLOG.map(e=>`<tr><td style="width:70px">${esc(e.id)}${e.i!==undefined&&e.i!==null?" ["+e.i+"]":""}</td><td class="small">${esc(e.note)}${e.src?`<br><i>${esc(e.src)}</i>`:""}</td></tr>`).join("")}</table></div>`:""}
+ <div class="card"><b>Sources checked for this build</b><ul class="small">
+ <li>FAA-S-8081-18A Commercial Pilot PTS, Lighter-Than-Air (Nov 2023) — Areas/Tasks, tolerances (±50 ft, ±50 fpm), special emphasis areas.</li>
+ <li>14 CFR 61.129(h) balloon aeronautical experience; 61.133(a)(2)(ii) and (b)(2) privileges and airborne-heater limitation.</li>
+ <li>Medical Certification Standards for Commercial Balloon Operations, final rule (87 FR 71218, Nov 22, 2022; medical provisions effective May 22, 2023).</li>
+ <li>Other items (AIH, BFH, AIM, Part 91/830/31/43) from standard references — verify against current editions and your flight manual; manufacturer limits always govern.</li></ul></div>`;
+}
+const VIEWS={setup:viewSetup,bank:viewBank,cov:viewCov,hist:viewHist,about:viewAbout};
+function view(v){if(S&&!S.done&&v!=="setup"&&S.i<S.plan.length&&!confirm("Leave the checkride in progress?"))return;clearInterval(tick);S=null;VIEWS[v]();document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.v===v))}
+$("#nav").addEventListener("click",e=>{if(e.target.dataset.v)view(e.target.dataset.v)});
+view("setup");
+</script>
+</body>
+</html>
