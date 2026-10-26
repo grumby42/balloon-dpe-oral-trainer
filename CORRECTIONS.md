@@ -2,7 +2,7 @@
 
 Every entry below was found in a pre-checkride accuracy review (FAA examiner + inspector perspective) against primary sources, verified, and applied at build time by `tools/build.js` from `src/errata.js`. The same log is shown in the app under **About**.
 
-168 corrections across 112 questions.
+188 corrections across 127 questions.
 
 | Question | Answer | Correction | Source |
 |---|---|---|---|
@@ -174,3 +174,23 @@ Every entry below was found in a pre-checkride accuracy review (FAA examiner + i
 | F-5 | — | ADM applies across all Tasks. | PTS Introduction |
 | F-15 | — | ADM applies across all Tasks. | PTS Introduction |
 | F-16 | — | 5P fits Flight Planning. | PTS III.C |
+| M-2 | [0] | BasicMed also covers student/recreational/instructor-PIC uses; what it never covers is compensation or hire. | 14 CFR 61.23(a)(3); 87 FR 71218 |
+| M-3 | [0] | 61.53(b) wording when no medical is required. | 14 CFR 61.53(b) |
+| M-4 | [0] | Framed as plain-text reading; no FAA interpretation specifically addresses paid flight reviews. | 14 CFR 61.23(b)(5), 61.133(a)(2)(ii)(D); 87 FR 71218 |
+| S-1 | [0] | Exact 61.89(a) wording (property for hire; 3 SM day / 5 SM night). | 14 CFR 61.89(a) |
+| S-2 | [3] | Grading/endorsement aren't in 61.87(b) itself. | 14 CFR 61.87(b)(2); AC 61-65K |
+| S-2 | [0] | Separated regulatory requirements from practice. | 14 CFR 61.87(b)(2) |
+| S-4 | [0] | 61.87(a) crewmember clause covers gas balloons and airships only. | 14 CFR 61.87(a) |
+| S-5 | [0] | Sport pilot (balloon) can carry one passenger. | 14 CFR 61.89(a)(1), 61.315 |
+| S-5 | [1] | Semi updated. | 14 CFR 61.315 |
+| P-2 | [3] | Distractor premise corrected. | 14 CFR 61.109(h)(1); 61.129(h)(4)(i)(C) |
+| P-2 | [0] | Completed the commercial comparison. | 14 CFR 61.129(h)(4) |
+| P-3 | — | Cited the rule that limits who may give training. | 14 CFR 61.3(d) |
+| P-3 | [3] | Added regulatory basis. | 14 CFR 61.3(d) |
+| P-4 | [0] | 17A: 'appropriate rate' for ascents, 'specified rate' for descents. | FAA-S-8081-17A Area V |
+| P-6 | — | Commercial LTA pilots qualify under 61.1(iii) via 61.3(d)(3)(i); no CFI certificate carries a balloon rating. | 14 CFR 61.1, 61.3(d) |
+| P-6 | [0] | Removed misleading 'flight instructor' alternative. | 14 CFR 61.1, 61.3(d) |
+| L-1 | [0] | Correlation requirement applies to the whole test. | FAA-S-8081-18A pp. 9, 11 |
+| L-3 | [3] | AIH ch. 5 lists five phases. | FAA-H-8083-9B ch. 5 |
+| L-5 | [0] | Relating to prior lessons belongs to Redirect. | FAA-H-8083-9B ch. 6 |
+| L-7 | [0] | Correct cite is 61.87(c)(2); standard is proficiency and safety. | 14 CFR 61.87(c)(2),(p) |
