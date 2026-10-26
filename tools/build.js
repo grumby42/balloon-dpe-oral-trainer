@@ -2,11 +2,11 @@
 // length-tell gates (fails the build if the correct answer is predictable by length), and stamps BALN-YYYYMMDD-HHMMZ.
 const path=require("path");const ROOT=path.join(__dirname,"..");
 const fs=require("fs");const {BANK,PTS}=require(path.join(ROOT,"src/bank/01-core.js")),{KEYS}=require(path.join(ROOT,"src/bank/display-keys.js")),{DISP}=require(path.join(ROOT,"src/bank/display-distractors.js"));
-const {BANK2}=require(path.join(ROOT,"src/bank/02-expansion.js"));const {BANK3}=require(path.join(ROOT,"src/bank/03-limits-emergencies.js"));const {BANK4}=require(path.join(ROOT,"src/bank/04-fitness-adm.js"));
+const {BANK2}=require(path.join(ROOT,"src/bank/02-expansion.js"));const {BANK3}=require(path.join(ROOT,"src/bank/03-limits-emergencies.js"));const {BANK4}=require(path.join(ROOT,"src/bank/04-fitness-adm.js"));const {BANK5}=require(path.join(ROOT,"src/bank/05-instructor-scope.js"));
 const err=[];
 const {ERRATA}=require(path.join(ROOT,"src/errata.js"));
 const ids=new Set(BANK.map(q=>q.id));
-for(const q of [...BANK2,...BANK3,...BANK4]){ if(ids.has(q.id))err.push("dup "+q.id); ids.add(q.id);
+for(const q of [...BANK2,...BANK3,...BANK4,...BANK5]){ if(ids.has(q.id))err.push("dup "+q.id); ids.add(q.id);
  if(!q.m)err.push("no model "+q.id);
  const B=q.ans.filter(a=>a[0]==="B").length,S=q.ans.filter(a=>a[0]==="S").length,W=q.ans.filter(a=>a[0]==="W").length;
  if(B!==1||S<1||W<1||W>3)err.push("shape "+q.id);
